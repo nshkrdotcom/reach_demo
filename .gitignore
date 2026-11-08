@@ -1,0 +1,6 @@
+**/_build/
+**/deps/
+**/evidence/compiled/
+__pycache__/
+*.beam
+/tmp/
