@@ -1,14 +1,16 @@
 # reach_demo
 
-Eight small, standalone Elixir/Mix projects exploring Reach 2.8.4's source and OTP analyses. Each has its own fixtures, tests, reproduction script, and recorded evidence.
+Eight standalone Elixir/Mix projects reproducing or investigating the behavior of **Reach 2.8.4**. Each has its own fixtures, tests, reproduction script, and recorded evidence. Project directory numbers are **not** GitHub issue numbers.
 
-- **[Node ID stability](monorepo/01_node_id_stability/)** — Node IDs across source revisions and file order; existing upstream issue 08.
-- **[Message and reply matching](monorepo/02_message_reply_coupling/)** — GenServer calls, replies, and message-payload edges; existing issues 04–07.
-- **[Supervisor detection](monorepo/03_supervision_semantics/)** — Supervisors and child relationships; existing issues 01–03.
-- **[Macros and BEAM](monorepo/04_macro_source_beam_alignment/)** — Authored macro invocations and generated functions; existing issue 09.
-- **[Plugin propagation](monorepo/05_plugin_sdg_propagation/)** — Project-selected plugins missing from per-module SDGs; draft 105.
-- **[Parse diagnostics](monorepo/06_parse_diagnostics/)** — Syntactically invalid requested files omitted without structured diagnostics; draft 106.
-- **[Framework-edge precision](monorepo/100_framework_edge_precision/)** — Phoenix and Ecto precision probes; drafts 107 and 108. Also includes an Ash investigation, which is not asserted as a proven runtime dispatch error.
-- **[gen_statem transitions](monorepo/101_gen_statem_transitions/)** — Callback-mode uncertainty and duplicate CLI reporting; drafts 109 and 110. Other modeled semantics are observations, not claimed defects.
+- **[01 — Node ID stability](monorepo/01_node_id_stability/)** — Source/BEAM node IDs and cross-run identity; upstream issue 08.
+- **[02 — Message/reply coupling](monorepo/02_message_reply_coupling/)** — GenServer calls, replies, message payloads, and callback scoping; upstream issues 04–07.
+- **[03 — Supervision semantics](monorepo/03_supervision_semantics/)** — Supervisor detection and child extraction; upstream issues 01–03.
+- **[04 — Macro/BEAM alignment](monorepo/04_macro_source_beam_alignment/)** — Authored macro invocations and generated functions; upstream issue 09.
+- **[05 — Plugin SDG propagation](monorepo/05_plugin_sdg_propagation/)** — Selected plugins not forwarded to module SDGs; proposed issue 105.
+- **[06 — Parse diagnostics](monorepo/06_parse_diagnostics/)** — Invalid or missing requested source files omitted without structured project diagnostics; proposed issue 106.
+- **[100 — Framework-edge precision](monorepo/100_framework_edge_precision/)** — Phoenix fallback scoping and Ecto candidate changeset flow; proposed issues 107–108. Separate Ash observations are not claimed as bugs.
+- **[101 — gen_statem transitions](monorepo/101_gen_statem_transitions/)** — Duplicate transition reporting and callback-mode misclassification; proposed issues 109–110. Other `gen_statem` observations remain investigative.
 
-Each folder is an independent Mix project. With Elixir 1.18+ and Erlang/OTP installed, run `mix deps.get`, `mix test`, and `mix run scripts/reproduce.exs` from its directory. Outputs are in `evidence/`. Investigative evidence can have a status of `inconclusive` while still containing specific, repeatable observations; consult each issue for the precise claim.
+All eight are independent Mix projects. With Elixir 1.18+ and Erlang/OTP installed, run `mix deps.get`, `mix test`, and `mix run scripts/reproduce.exs` from the selected project directory. Check its `evidence/` directory for the recorded JSON and Reach/Elixir/OTP provenance.
+
+The framework (`INV-100`) and `gen_statem` (`INV-101`) reports can have an **overall** status of `inconclusive` while their specific, tested findings have `status: reproduced` in `comparisons`. The relevant issue text states the narrower claim; a static-analysis edge does not establish runtime behavior.

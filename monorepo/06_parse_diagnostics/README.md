@@ -1,10 +1,10 @@
-# RD-06 — Per-file parse/build diagnostics missing from project results
+# RD-06 — Missing per-file diagnostics for invalid or absent source inputs
 
-**Supports upstream draft 106.** Standalone Mix project, independent of the four original repros.
+**Supports proposed issue 106.** This project is independent of the original RD-01–04 reproductions.
 
-`fixtures/valid.ex` parses, while `fixtures/invalid.ex` deliberately contains invalid syntax. The primary default full-SDG and secondary source-only comparisons confirm whether the invalid source is silently dropped. A **separate missing-path probe** passes an absent `fixtures/does_not_exist.ex` path directly to Reach without using the `Support.fixture!/1` helper. The explicit non-Elixir `.txt` side probe remains separate and is not essential to the claim.
+`fixtures/valid.ex` parses, while `fixtures/invalid.ex` deliberately does not. The default full-SDG and secondary `source_only` comparisons show that adding the invalid file leaves the project graph unchanged, with no machine-readable per-file error in the returned `%Reach.Project{}`. An isolated missing-path probe also passes an absent `fixtures/does_not_exist.ex` directly to Reach and records the same omission. The `.txt` unknown-extension probe is separate, not essential to the claim.
 
-`ExUnit.CaptureLog`/`ExUnit.CaptureIO` are started for standalone `mix run` execution. Log output is not equivalent to per-file structured diagnostics in the returned `%Reach.Project{}`. A hypothetical `return_diagnostics: true` API is probed with `apply/3` to avoid the Elixir 1.20 compile warning while supporting Elixir >= 1.18.
+`ExUnit.CaptureLog` and `ExUnit.CaptureIO` are started for standalone `mix run` execution. Logged text is not a substitute for structured diagnostics in the return value. The optional `return_diagnostics: true` probe uses `apply/3` for compatibility with Elixir 1.18–1.20 and to avoid a compile-time type warning.
 
 Run from this project directory:
 
@@ -12,9 +12,8 @@ Run from this project directory:
 mix deps.get
 mix test
 mix run scripts/reproduce.exs
-mix reach.otp fixtures
 ```
 
-The last command is an **optional manual CLI confirmation**. It may print `Analyzing 2 file(s)` even when the invalid file is omitted; that count refers to requested paths, not successfully parsed files.
+Optional CLI observation: `mix reach.otp fixtures` reports `Analyzing 2 file(s)` for the requested `.ex` paths without identifying that the invalid one was dropped; the count refers to requested files, not successfully parsed files.
 
-See [`evidence/rd-06.json`](evidence/rd-06.json). Regenerate it after this patch. Future-fix tests remain excluded by default.
+**Recorded evidence:** [`evidence/rd-06.json`](evidence/rd-06.json) has status `reproduced` and includes the invalid-syntax and nonexistent-path comparisons. Future-fix tests are excluded by default. Regenerate the report only if the fixtures or investigation code change.
