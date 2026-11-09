@@ -144,7 +144,7 @@ defmodule ReachDemo.Investigation101 do
       |> length()
 
     library_count = length(Map.get(basic, "transitions", []))
-    reflattened_count = get_in(probe, ["result", "preflattened_transitions"])
+    reflattened_count = probe["preflattened_transitions"]
 
     [
       %{
