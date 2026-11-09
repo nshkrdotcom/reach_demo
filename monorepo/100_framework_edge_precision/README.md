@@ -5,12 +5,12 @@
 
 Three separate source-only Reach 2.8.4 probes:
 
-- **Phoenix:** a module-level `action_fallback` plus controller and unrelated
-  utility errors, compared with a no-fallback control. The fallback rule is
+- **Phoenix:** a module-level `action_fallback` on a two-argument controller action
+  plus an unrelated utility error, compared with a no-fallback control. The fallback rule is
   in `Reach.Plugins.Phoenix.analyze/2` (local hook), **not** the Phoenix
   `analyze_project/3` plug-chain hook. Only the local hook is used for this
   hypothesis.
-- **Ecto:** one real cast-to-write dataflow, one same-function unused cast,
+- **Ecto:** one typed schemaless cast-to-write dataflow, one same-function unused cast,
   a no-cast control, and a `FakeRepo` suffix-only decoy. The suffix is
   heuristic; no fixture claims that `FakeRepo` actually uses `Ecto.Repo`.
 - **Ash:** valid Ash 3 domain code-interface syntax is used in

@@ -10,4 +10,12 @@ defmodule ReachDemo.FrameworkPrecision.FixtureTest do
       assert {:ok, _} = Code.string_to_quoted(source, file: path)
     end)
   end
+
+  test "Phoenix action and Ecto cast examples use normal framework shapes" do
+    phoenix = "fixtures/phoenix/with_fallback.ex" |> S.fixture!() |> File.read!()
+    ecto = "fixtures/ecto/paired.ex" |> S.fixture!() |> File.read!()
+    assert phoenix =~ "def show(_conn, %{"
+    assert phoenix =~ "action_fallback"
+    assert ecto =~ "Ecto.Changeset.cast({%{}, %{name: :string}}"
+  end
 end
