@@ -95,7 +95,7 @@ defmodule ReachDemo.Investigation06 do
         %{"available" => false, "reports_invalid_input" => false}
       end
 
-    flagged = Reach.Project.from_sources(paths, plugins: [], return_diagnostics: true)
+    flagged = apply(Reach.Project, :from_sources, [paths, [plugins: [], return_diagnostics: true]])
 
     %{
       "from_sources_with_report_2" => alternate,
