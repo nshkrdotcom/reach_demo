@@ -11,6 +11,9 @@ defmodule ReachDemo.ParseDiagnostics.CharacterizationTest do
     assert rows["full_valid_only"]["result"]["logger_capture_available"] == true
     assert rows["full_valid_plus_invalid"]["result"]["project_fields"] ==
              rows["full_valid_only"]["result"]["project_fields"]
+    missing = rows["missing_file_path"]["result"]
+    assert missing["outcome"] == "returned"
+    assert missing["result"]["node_count"] == rows["full_valid_only"]["result"]["node_count"]
     assert report["status"] in ~w(reproduced not_reproduced inconclusive)
   end
 end

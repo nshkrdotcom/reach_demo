@@ -32,4 +32,4 @@ Hex Reach provenance. The **headline status** is decided by ProbePlugin's
 positive controls; the additional inferred Ecto results are independent
 observations that must have their own controls before being claimed as bugs.
 Expected-fix tests are excluded by default. Failed runs write a `.failure.json`
-diagnostic; no runtime evidence is pre-populated in the ZIP.
+diagnostic. Recorded runtime evidence is committed in `evidence/rd-05.json`.

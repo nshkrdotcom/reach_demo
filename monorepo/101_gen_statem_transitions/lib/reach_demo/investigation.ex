@@ -10,6 +10,7 @@ defmodule ReachDemo.Investigation101 do
     fixtures/postpone_timeout.ex
     fixtures/guarded_clauses.ex
     fixtures/dynamic_mode.ex
+    fixtures/attr_mode.ex
   )
 
   def fixture_paths, do: @fixtures
@@ -108,6 +109,71 @@ defmodule ReachDemo.Investigation101 do
     end
   end
 
+  defp preflattened_module_probe do
+    path = "fixtures/state_functions_basic.ex"
+    full = S.fixture!(path)
+    {:ok, roots} = Reach.IR.from_string(File.read!(full), file: full)
+    modules = Enum.filter(Reach.IR.all_nodes(roots), &(&1.type == :module_def))
+
+    case modules do
+      [mod] ->
+        direct = Reach.OTP.GenStatem.analyze(roots)
+        repeated = Reach.OTP.GenStatem.analyze([mod | Reach.IR.all_nodes(mod)])
+
+        %{
+          "direct_transitions" => length(direct.transitions),
+          "preflattened_transitions" => length(repeated.transitions),
+          "preflattened_roots_count" => length([mod | Reach.IR.all_nodes(mod)]),
+          "note" => "This models the nested IR input assembled by Reach.OTP.Analysis.find_gen_statems; GenStatem.analyze/1 descends again."
+        }
+      _ -> raise("Expected exactly one module in state_functions_basic.ex")
+    end
+  end
+
+  defp finding_comparisons(observations, cli_observations, probe) do
+    library = Map.new(observations, &{&1["scenario"], &1["result"]})
+    cli = Map.new(cli_observations, &{&1["scenario"], &1["result"]})
+    basic = library["fixtures/state_functions_basic.ex"] || %{}
+    attr = library["fixtures/attr_mode.ex"] || %{}
+    dynamic = library["fixtures/dynamic_mode.ex"] || %{}
+    cli_basic = cli["cli:fixtures/state_functions_basic.ex"] || %{}
+
+    cli_transitions =
+      (get_in(cli_basic, ["decoded", "state_machines"]) || [])
+      |> Enum.flat_map(&Map.get(&1, "transitions", []))
+      |> length()
+
+    library_count = length(Map.get(basic, "transitions", []))
+    reflattened_count = get_in(probe, ["result", "preflattened_transitions"])
+
+    [
+      %{
+        "finding" => "duplicate_gen_statem_reporting",
+        "observed" => library_count == 2 and reflattened_count == 8 and
+          cli_basic["exit_status"] == 0 and cli_basic["json_valid"] == true and
+          cli_transitions == 8,
+        "library_transition_count" => library_count,
+        "preflattened_transition_count" => reflattened_count,
+        "cli_transition_count" => cli_transitions,
+        "cli_json_valid" => cli_basic["json_valid"] == true
+      },
+      %{
+        "finding" => "module_attribute_callback_mode",
+        "observed" => attr["recognized"] == true and
+          attr["callback_mode"] == "state_functions" and
+          Map.get(attr, "transitions", []) == [],
+        "source_callback_mode" => "handle_event_function (via @mode)",
+        "reported_callback_mode" => attr["callback_mode"],
+        "reported_transition_count" => length(Map.get(attr, "transitions", [])),
+        "dynamic_fallback_reported_mode" => dynamic["callback_mode"],
+        "note" => "An attribute literal should be distinguishable from truly dynamic callback mode; neither result should be claimed as a runtime execution."
+      }
+    ]
+    |> Enum.map(fn finding ->
+      Map.put(finding, "status", if(finding["observed"], do: "reproduced", else: "inconclusive"))
+    end)
+  end
+
   def collect do
     observations = Enum.map(@fixtures, fn path ->
       %{"scenario" => path, "result" => safe_probe(fn -> analyze_file(path) end)}
@@ -117,19 +183,24 @@ defmodule ReachDemo.Investigation101 do
       %{"scenario" => "cli:" <> path, "result" => safe_probe(fn -> cli_probe(path) end)}
     end)
 
+    reflattened_probe = safe_probe(&preflattened_module_probe/0)
+
     S.result!(
       %{
         status: "inconclusive",
         classification: "investigation_only_gen_statem_coverage",
         inputs: S.input_records(@fixtures),
+        comparisons: finding_comparisons(observations, cli_observations, reflattened_probe),
         analysis_scopes: [
-          %{api: "Reach.OTP.GenStatem.analyze/1", scope: "seven inert source fixtures"},
-          %{api: "mix reach.otp <fixture> --format json", scope: "all seven independent source fixtures"}
+          %{api: "Reach.OTP.GenStatem.analyze/1", scope: "eight inert source fixtures"},
+          %{api: "mix reach.otp <fixture> --format json", scope: "all eight independent source fixtures"}
         ],
-        observations: observations ++ cli_observations,
+        observations: observations ++ cli_observations ++
+          [%{"scenario" => "library_preflattened_ir", "result" => reflattened_probe}],
         oracle_expectations: [
           %{rule: "Basic literal next_state transitions are positive controls."},
           %{rule: "Dynamic callback_mode with no recognizable literal must be marked unresolved, or explicitly heuristic."},
+          %{rule: "A statically literal module attribute in callback_mode/0 should not be silently treated as state_functions."},
           %{rule: "State-functions-mode transition triggers may be nil due to implementation; this is a coverage difference, not automatically a bug."},
           %{rule: "keep_state/repeat_state currently need separate qualification; missing self-loops may be deliberate."},
           %{rule: "State-enter events, timeouts, postponed events and guards do not automatically imply feasible runtime transitions."}

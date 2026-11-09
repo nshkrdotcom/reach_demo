@@ -1,25 +1,12 @@
-# INV-100 — Framework edge-precision investigation (RCH-09)
+# INV-100 — Phoenix, Ecto, Ash framework-edge investigation
 
-**Investigation, not a confirmed bug or a GitHub issue draft.** The
-`100_framework_edge_precision` directory has no relation to draft 101.
+**Supports issue drafts 107 (Phoenix fallback scope) and 108 (Ecto candidate changeset flow).** `monorepo/100` is a reproduction-project identifier, not a GitHub issue number.
 
-Three separate source-only Reach 2.8.4 probes:
+`fixtures/phoenix/with_fallback.ex` establishes an action and unrelated utility in one file; `without_fallback.ex` is the negative control. The added `fixtures/phoenix/extra.ex` declares *two different controllers* and *two separate fallback declarations* in the same file. Reach 2.8.4's local Phoenix hook connects an error from controller B to controller A's first fallback. This directly tests file-level rather than controller-level scoping. It uses **parsed IR**, not runtime Phoenix dispatch, and one controller per file is more typical.
 
-- **Phoenix:** a module-level `action_fallback` on a two-argument controller action
-  plus an unrelated utility error, compared with a no-fallback control. The fallback rule is
-  in `Reach.Plugins.Phoenix.analyze/2` (local hook), **not** the Phoenix
-  `analyze_project/3` plug-chain hook. Only the local hook is used for this
-  hypothesis.
-- **Ecto:** one typed schemaless cast-to-write dataflow, one same-function unused cast,
-  a no-cast control, and a `FakeRepo` suffix-only decoy. The suffix is
-  heuristic; no fixture claims that `FakeRepo` actually uses `Ecto.Repo`.
-- **Ash:** valid Ash 3 domain code-interface syntax is used in
-  `resources do; resource ResourceA do; define :create_user, ...; end; end`.
-  Separate resource modules include an **unregistered** same-named action
-  (ResourceB) and a different-action control. The project-level
-  `analyze_project/3` hook is invoked directly and compared with the merged
-  graph. The fixture syntax follows Ash's published DSL, but framework
-  dependencies are intentionally **not compiled or executed**.
+The Ecto fixture `paired.ex` tests both a cast result actually passed to a `TestRepo.insert/1` and an unused cast result in the same function as an unrelated write. Reach's Ecto hook generates a candidate changeset-flow edge in both cases. `FakeRepo` tests name-suffix detection; neither fake Repo is a compiled `Ecto.Repo` module. This is a **precision enhancement**, not a claim that Reach promises exact data-dependence.
+
+Separate Ash project-hook experiments are preserved as observations, not part of issues 107/108. The report remains **overall `inconclusive`** because the investigation contains intentional heuristic cases; `comparisons` records each specific observed precision finding with its own `status: reproduced` when the assertion holds.
 
 Run from this project directory:
 
@@ -29,7 +16,4 @@ mix test
 mix run scripts/reproduce.exs
 ```
 
-Read `evidence/inv-100.json` and check each reported source/target before
-claiming a false edge. The result deliberately stays `inconclusive` until
-observed edges and their semantic assumptions are validated. The existing
-four reproduction projects remain unchanged.
+The evidence report is [`evidence/inv-100.json`](evidence/inv-100.json). Re-run after adding fixtures so its SHA-256 inputs and observations include `extra.ex`. No original reproduction projects are modified.

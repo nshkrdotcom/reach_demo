@@ -4,6 +4,7 @@ defmodule ReachDemo.Investigation100 do
 
   @local_cases [
     {"phoenix_fallback", "fixtures/phoenix/with_fallback.ex", Reach.Plugins.Phoenix},
+    {"phoenix_two_controllers", "fixtures/phoenix/extra.ex", Reach.Plugins.Phoenix},
     {"phoenix_control", "fixtures/phoenix/without_fallback.ex", Reach.Plugins.Phoenix},
     {"ecto_paired", "fixtures/ecto/paired.ex", Reach.Plugins.Ecto},
     {"ecto_control", "fixtures/ecto/no_cast.ex", Reach.Plugins.Ecto},
@@ -122,6 +123,60 @@ defmodule ReachDemo.Investigation100 do
     end
   end
 
+  defp phoenix_scope_comparison(local) do
+    probe = local["phoenix_two_controllers"] || %{}
+    calls = Map.get(probe, "call_sites", [])
+    fallbacks = Enum.filter(calls, &(&1["function"] == "action_fallback"))
+    edges = Enum.filter(Map.get(probe, "local_hook_edges", []), &(&1["label"] == ":phoenix_action_fallback"))
+    first_id = case fallbacks do
+      [first | _] -> first["id"]
+      _ -> nil
+    end
+    second_id = case fallbacks do
+      [_, second | _] -> second["id"]
+      _ -> nil
+    end
+
+    from_other_controller =
+      Enum.filter(edges, fn edge ->
+        String.ends_with?(edge["source"]["owner"] || "", "Demo.CtrlB.index/2")
+      end)
+
+    observed =
+      length(fallbacks) == 2 and
+        from_other_controller != [] and
+        Enum.all?(from_other_controller, &(&1["target"]["id"] == first_id)) and
+        Enum.all?(from_other_controller, &(&1["target"]["id"] != second_id))
+
+    %{
+      "finding" => "phoenix_cross_controller_fallback",
+      "observed" => observed,
+      "status" => if(observed, do: "reproduced", else: "inconclusive"),
+      "declared_fallback_call_ids" => Enum.map(fallbacks, & &1["id"]),
+      "controller_b_fallback_edges" => from_other_controller,
+      "note" => "Controller B has its own fallback declaration; this tests direct plugin.analyze/2 on two controllers in one source file."
+    }
+  end
+
+  defp ecto_flow_comparison(local) do
+    probe = local["ecto_paired"] || %{}
+    edges = Enum.filter(Map.get(probe, "local_hook_edges", []), fn edge ->
+      edge["label"] == "{:ecto_changeset_flow, :cast}"
+    end)
+    connected = Enum.filter(edges, &String.ends_with?(&1["source"]["owner"] || "", "Calls.connected/1"))
+    unrelated = Enum.filter(edges, &String.ends_with?(&1["source"]["owner"] || "", "Calls.unrelated/2"))
+
+    %{
+      "finding" => "ecto_same_function_candidate_flow",
+      "observed" => connected != [] and unrelated != [],
+      "status" => if(connected != [] and unrelated != [], do: "reproduced", else: "inconclusive"),
+      "connected_count" => length(connected),
+      "unused_cast_count" => length(unrelated),
+      "unused_cast_edges" => unrelated,
+      "note" => "Unrelated/2 does not pass its bound cast result to TestRepo.insert/1; a plugin-local heuristic is not proof of runtime dataflow."
+    }
+  end
+
   def collect do
     local = Map.new(@local_cases, fn {name, path, plugin} ->
       {name, safe_probe(fn -> analyze_file(path, plugin) end)}
@@ -144,6 +199,7 @@ defmodule ReachDemo.Investigation100 do
           %{api: "Plugin.analyze_project/3", scope: "multi-file Ash only; Phoenix fallback uses analyze/2"},
           %{api: "Reach.Project.from_sources/2", scope: "merged project graph comparison"}
         ],
+        comparisons: [phoenix_scope_comparison(local), ecto_flow_comparison(local)],
         observations: [
           %{"scenario" => "direct_local_hooks", "results" => local},
           %{"scenario" => "project_hooks", "results" => scopes}

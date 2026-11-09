@@ -78,6 +78,13 @@ defmodule ReachDemo.Investigation06 do
     end
   end
 
+  defp missing_path_probe do
+    path = Path.expand("fixtures/does_not_exist.ex")
+    if File.exists?(path), do: raise("Missing-path control unexpectedly exists")
+    project = Reach.Project.from_sources([S.fixture!(@valid), path], plugins: [])
+    summarize_project(project, [@valid, "fixtures/does_not_exist.ex"])
+  end
+
   def diagnostics_probe do
     paths = Enum.map([@valid, @invalid], &S.fixture!/1)
 
@@ -122,6 +129,7 @@ defmodule ReachDemo.Investigation06 do
     # fallback for an explicit file with a non-source extension. Not part of
     # the headline classification: if it raises, the main evidence survives.
     fallback = safe_side_probe(fn -> capture_build([@valid, @unknown], plugins: []) end)
+    missing = safe_side_probe(&missing_path_probe/0)
 
     controls_valid = valid_syntax["status"] == "ok" and invalid_syntax["status"] == "error"
 
@@ -162,9 +170,18 @@ defmodule ReachDemo.Investigation06 do
           %{"scenario" => "source_only_valid_only", "result" => source_good},
           %{"scenario" => "source_only_valid_plus_invalid", "result" => source_mixed},
           %{"scenario" => "unknown_extension_fallback", "result" => fallback},
+          %{"scenario" => "missing_file_path", "result" => missing},
           %{"scenario" => "diagnostic_api_probe", "result" => diag_api}
         ],
         comparisons: [
+          %{
+            "name" => "nonexistent_input_is_unreported",
+            "outcome" => missing["outcome"],
+            "same_graph_nodes" => missing["outcome"] == "returned" and
+              get_in(missing, ["result", "node_count"]) == full_good["node_count"],
+            "has_new_project_fields" => get_in(missing, ["result", "has_new_project_fields"]),
+            "note" => "This probe is isolated; a raised error does not invalidate the syntax-error reproduction."
+          },
           %{
             "name" => "invalid_input_omitted_from_default_project",
             "controls_valid" => controls_valid,

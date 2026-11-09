@@ -3,13 +3,19 @@ defmodule ReachDemo.GenStatem.FixtureTest do
   alias ReachDemo.Support, as: S
   alias ReachDemo.Investigation101, as: I
 
-  test "all seven statem source fixtures have valid syntax" do
-    assert length(I.fixture_paths()) == 7
+  test "all eight statem source fixtures have valid syntax" do
+    assert length(I.fixture_paths()) == 8
     paths = I.fixture_paths()
     Enum.each(paths, fn path ->
       source = path |> S.fixture!() |> File.read!()
       assert {:ok, _} = Code.string_to_quoted(source, file: path)
     end)
+  end
+
+  test "attribute mode declares a static handle_event_function literal" do
+    source = "fixtures/attr_mode.ex" |> S.fixture!() |> File.read!()
+    assert source =~ "@mode :handle_event_function"
+    assert source =~ "def callback_mode(), do: @mode"
   end
 
   test "dynamic mode deliberately contains no callback-mode literal" do
